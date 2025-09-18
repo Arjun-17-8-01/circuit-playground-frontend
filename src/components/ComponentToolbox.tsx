@@ -54,7 +54,7 @@ export const ComponentToolbox: React.FC<ComponentToolboxProps> = ({
         <CardHeader className="pb-3">
           <CardTitle className="text-lg text-primary">Component Toolbox</CardTitle>
           <p className="text-sm text-muted-foreground">
-            Drag components to the gap area to complete the circuit
+            Drag resistors to the top gap and capacitors to the bottom gap
           </p>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -75,9 +75,10 @@ export const ComponentToolbox: React.FC<ComponentToolboxProps> = ({
           <div className="mt-4 p-3 bg-muted rounded-lg">
             <h4 className="text-xs font-semibold text-foreground mb-1">Instructions:</h4>
             <ul className="text-xs text-muted-foreground space-y-1">
-              <li>• Drag components to the gap</li>
+              <li>• Drag resistors to the top gap</li>
+              <li>• Drag capacitors to the bottom gap</li>
               <li>• Click components to remove them</li>
-              <li>• Watch the bulb and motor activate</li>
+              <li>• Circuit completes when both gaps are filled</li>
             </ul>
           </div>
         </CardContent>

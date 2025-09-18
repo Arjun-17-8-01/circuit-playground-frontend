@@ -21,33 +21,59 @@ export const CircuitCanvas: React.FC<CircuitCanvasProps> = ({
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
-    if (!draggedComponent || !canvasRef.current) return;
+    
+    const rect = canvasRef.current?.getBoundingClientRect();
+    if (!rect) return;
 
-    const rect = canvasRef.current.getBoundingClientRect();
     const position = {
       x: e.clientX - rect.left,
       y: e.clientY - rect.top,
     };
 
-    // Check if drop is in the gap area (center of circuit)
-    const gapArea = {
-      x: 350,
-      y: 180,
-      width: 100,
+    // Get component data from drag event
+    let componentData;
+    try {
+      const dragData = e.dataTransfer.getData('text/plain');
+      componentData = JSON.parse(dragData);
+    } catch {
+      console.log('No valid component data in drag event');
+      return;
+    }
+
+    // Define gap areas - resistor gap and capacitor gap
+    const resistorGap = {
+      x: 300,
+      y: 100,
+      width: 120,
       height: 40,
     };
 
-    if (
-      position.x >= gapArea.x &&
-      position.x <= gapArea.x + gapArea.width &&
-      position.y >= gapArea.y &&
-      position.y <= gapArea.y + gapArea.height
-    ) {
-      onComponentDrop(draggedComponent, position);
+    const capacitorGap = {
+      x: 300,
+      y: 280,
+      width: 120,
+      height: 40,
+    };
+
+    // Check if drop is in appropriate gap
+    const isInResistorGap = position.x >= resistorGap.x && 
+                           position.x <= resistorGap.x + resistorGap.width &&
+                           position.y >= resistorGap.y && 
+                           position.y <= resistorGap.y + resistorGap.height;
+
+    const isInCapacitorGap = position.x >= capacitorGap.x && 
+                            position.x <= capacitorGap.x + capacitorGap.width &&
+                            position.y >= capacitorGap.y && 
+                            position.y <= capacitorGap.y + capacitorGap.height;
+
+    // Only allow correct component types in correct gaps
+    if ((componentData.type === 'resistor' && isInResistorGap) ||
+        (componentData.type === 'capacitor' && isInCapacitorGap)) {
+      onComponentDrop(componentData, position);
     }
 
     setDraggedComponent(null);
-  }, [draggedComponent, onComponentDrop]);
+  }, [onComponentDrop]);
 
   // Enable drag and drop from external source
   React.useEffect(() => {
@@ -122,24 +148,46 @@ export const CircuitCanvas: React.FC<CircuitCanvasProps> = ({
         strokeDasharray={circuitState.isComplete ? "5,5" : "none"}
       />
       
-      {/* Bulb to gap */}
+      {/* Bulb to resistor gap */}
       <path
-        d="M 170 120 L 350 120 L 350 200"
+        d="M 170 120 L 300 120"
         className={circuitState.isComplete ? 'current-flow circuit-glow' : ''}
         strokeDasharray={circuitState.isComplete ? "5,5" : "none"}
       />
       
-      {/* Gap area - dashed red line when incomplete */}
+      {/* Resistor gap area */}
       <path
-        d="M 350 200 L 450 200"
-        stroke={circuitState.isComplete ? 'hsl(var(--circuit-trace))' : 'hsl(var(--circuit-incomplete))'}
+        d="M 300 120 L 420 120"
+        stroke={circuitState.components.some(c => c.type === 'resistor' && c.isConnected) ? 'hsl(var(--circuit-trace))' : 'hsl(var(--circuit-incomplete))'}
         strokeDasharray="10,5"
-        className={!circuitState.isComplete ? 'gap-pulse' : circuitState.isComplete ? 'current-flow circuit-glow' : ''}
+        className={!circuitState.components.some(c => c.type === 'resistor' && c.isConnected) ? 'gap-pulse' : circuitState.isComplete ? 'current-flow circuit-glow' : ''}
       />
       
-      {/* After gap to motor */}
+      {/* From resistor gap to junction */}
       <path
-        d="M 450 200 L 500 200 L 500 265 L 170 265"
+        d="M 420 120 L 500 120 L 500 200 L 450 200"
+        className={circuitState.isComplete ? 'current-flow circuit-glow' : ''}
+        strokeDasharray={circuitState.isComplete ? "5,5" : "none"}
+      />
+      
+      {/* Vertical connection to capacitor gap */}
+      <path
+        d="M 450 200 L 450 280 L 420 280"
+        className={circuitState.isComplete ? 'current-flow circuit-glow' : ''}
+        strokeDasharray={circuitState.isComplete ? "5,5" : "none"}
+      />
+      
+      {/* Capacitor gap area */}
+      <path
+        d="M 420 280 L 300 280"
+        stroke={circuitState.components.some(c => c.type === 'capacitor' && c.isConnected) ? 'hsl(var(--circuit-trace))' : 'hsl(var(--circuit-incomplete))'}
+        strokeDasharray="10,5"
+        className={!circuitState.components.some(c => c.type === 'capacitor' && c.isConnected) ? 'gap-pulse' : circuitState.isComplete ? 'current-flow circuit-glow' : ''}
+      />
+      
+      {/* From capacitor gap to motor */}
+      <path
+        d="M 300 280 L 170 280 L 170 265"
         className={circuitState.isComplete ? 'current-flow circuit-glow' : ''}
         strokeDasharray={circuitState.isComplete ? "5,5" : "none"}
       />
@@ -153,26 +201,55 @@ export const CircuitCanvas: React.FC<CircuitCanvasProps> = ({
     </g>
   );
 
-  const renderGapIndicator = () => (
+  const renderGapIndicators = () => (
     <g>
-      <rect
-        x="350"
-        y="180"
-        width="100"
-        height="40"
-        fill="hsl(var(--circuit-gap) / 0.1)"
-        stroke="hsl(var(--circuit-gap))"
-        strokeWidth="2"
-        strokeDasharray="5,5"
-        rx="5"
-        className="gap-pulse"
-      />
-      <text x="400" y="200" textAnchor="middle" fill="hsl(var(--circuit-gap))" fontSize="12" fontWeight="bold">
-        DROP
-      </text>
-      <text x="400" y="212" textAnchor="middle" fill="hsl(var(--circuit-gap))" fontSize="12" fontWeight="bold">
-        HERE
-      </text>
+      {/* Resistor Gap */}
+      {!circuitState.components.some(c => c.type === 'resistor' && c.isConnected) && (
+        <g>
+          <rect
+            x="300"
+            y="100"
+            width="120"
+            height="40"
+            fill="hsl(var(--circuit-gap) / 0.1)"
+            stroke="hsl(var(--circuit-gap))"
+            strokeWidth="2"
+            strokeDasharray="5,5"
+            rx="5"
+            className="gap-pulse"
+          />
+          <text x="360" y="115" textAnchor="middle" fill="hsl(var(--circuit-gap))" fontSize="10" fontWeight="bold">
+            RESISTOR
+          </text>
+          <text x="360" y="125" textAnchor="middle" fill="hsl(var(--circuit-gap))" fontSize="10" fontWeight="bold">
+            DROP HERE
+          </text>
+        </g>
+      )}
+      
+      {/* Capacitor Gap */}
+      {!circuitState.components.some(c => c.type === 'capacitor' && c.isConnected) && (
+        <g>
+          <rect
+            x="300"
+            y="280"
+            width="120"
+            height="40"
+            fill="hsl(var(--circuit-gap) / 0.1)"
+            stroke="hsl(var(--circuit-gap))"
+            strokeWidth="2"
+            strokeDasharray="5,5"
+            rx="5"
+            className="gap-pulse"
+          />
+          <text x="360" y="295" textAnchor="middle" fill="hsl(var(--circuit-gap))" fontSize="10" fontWeight="bold">
+            CAPACITOR
+          </text>
+          <text x="360" y="305" textAnchor="middle" fill="hsl(var(--circuit-gap))" fontSize="10" fontWeight="bold">
+            DROP HERE
+          </text>
+        </g>
+      )}
     </g>
   );
 
@@ -243,7 +320,7 @@ export const CircuitCanvas: React.FC<CircuitCanvasProps> = ({
         {renderBattery()}
         {renderBulb()}
         {renderMotor()}
-        {!circuitState.isComplete && renderGapIndicator()}
+        {renderGapIndicators()}
         {renderComponents()}
       </svg>
     </div>

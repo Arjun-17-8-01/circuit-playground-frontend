@@ -91,7 +91,8 @@ export const CircuitSimulator: React.FC = () => {
     setCircuitState(prev => ({
       ...prev,
       components: updatedComponents,
-      isComplete: updatedComponents.length > 0,
+      isComplete: updatedComponents.some(c => c.type === 'resistor' && c.isConnected) && 
+                  updatedComponents.some(c => c.type === 'capacitor' && c.isConnected),
       totalResistance,
       totalCapacitance,
       current,
@@ -110,7 +111,8 @@ export const CircuitSimulator: React.FC = () => {
     setCircuitState(prev => ({
       ...prev,
       components: updatedComponents,
-      isComplete: updatedComponents.length > 0,
+      isComplete: updatedComponents.some(c => c.type === 'resistor' && c.isConnected) && 
+                  updatedComponents.some(c => c.type === 'capacitor' && c.isConnected),
       totalResistance,
       totalCapacitance,
       current,
@@ -156,7 +158,7 @@ export const CircuitSimulator: React.FC = () => {
         <header className="mb-6">
           <h1 className="text-3xl font-bold text-primary mb-2">Electronic Circuit Simulator</h1>
           <p className="text-muted-foreground">
-            Complete the circuit by connecting resistors and capacitors to bridge the gap
+            Complete the circuit by connecting both a resistor and a capacitor to their respective gaps
           </p>
         </header>
 
