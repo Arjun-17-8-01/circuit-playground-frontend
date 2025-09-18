@@ -57,6 +57,24 @@ export default {
           border: "hsl(var(--sidebar-border))",
           ring: "hsl(var(--sidebar-ring))",
         },
+        circuit: {
+          copper: "hsl(var(--circuit-copper))",
+          trace: "hsl(var(--circuit-trace))",
+          current: "hsl(var(--circuit-current))",
+          complete: "hsl(var(--circuit-complete))",
+          incomplete: "hsl(var(--circuit-incomplete))",
+          gap: "hsl(var(--circuit-gap))",
+        },
+        component: {
+          body: "hsl(var(--component-body))",
+          active: "hsl(var(--component-active))",
+        },
+        bulb: {
+          on: "hsl(var(--bulb-on))",
+        },
+        motor: {
+          active: "hsl(var(--motor-active))",
+        },
       },
       borderRadius: {
         lg: "var(--radius)",
