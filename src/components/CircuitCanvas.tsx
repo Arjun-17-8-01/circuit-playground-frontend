@@ -1,4 +1,4 @@
-import React, { useRef, useState, useCallback } from 'react';
+import React, { useRef, useCallback } from 'react';
 import { Component, CircuitState } from './CircuitSimulator';
 
 interface CircuitCanvasProps {
@@ -13,30 +13,54 @@ export const CircuitCanvas: React.FC<CircuitCanvasProps> = ({
   onComponentRemove,
 }) => {
   const canvasRef = useRef<SVGSVGElement>(null);
-  const [draggedComponent, setDraggedComponent] = useState<Omit<Component, 'id' | 'isConnected' | 'position'> | null>(null);
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
+    e.dataTransfer.dropEffect = 'copy';
+    console.log('Drag over canvas');
+  }, []);
+  
+  const handleDragEnter = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    console.log('Drag enter canvas');
   }, []);
 
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    console.log('Drag leave canvas');
+  }, []);
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
+    console.log('Drop event triggered');
     
     const rect = canvasRef.current?.getBoundingClientRect();
-    if (!rect) return;
+    if (!rect) {
+      console.log('No canvas rect found');
+      return;
+    }
 
     const position = {
       x: e.clientX - rect.left,
       y: e.clientY - rect.top,
     };
+    console.log('Drop position:', position);
 
     // Get component data from drag event
     let componentData;
     try {
-      const dragData = e.dataTransfer.getData('text/plain');
+      // Try both data formats
+      let dragData = e.dataTransfer.getData('application/json');
+      if (!dragData) {
+        dragData = e.dataTransfer.getData('text/plain');
+      }
+      if (!dragData) {
+        console.log('No drag data found');
+        return;
+      }
       componentData = JSON.parse(dragData);
-    } catch {
-      console.log('No valid component data in drag event');
+      console.log('Component data:', componentData);
+    } catch (error) {
+      console.log('Error parsing component data:', error);
       return;
     }
 
@@ -66,27 +90,20 @@ export const CircuitCanvas: React.FC<CircuitCanvasProps> = ({
                             position.y >= capacitorGap.y && 
                             position.y <= capacitorGap.y + capacitorGap.height;
 
+    console.log('Is in resistor gap:', isInResistorGap);
+    console.log('Is in capacitor gap:', isInCapacitorGap);
+    console.log('Component type:', componentData.type);
+
     // Only allow correct component types in correct gaps
     if ((componentData.type === 'resistor' && isInResistorGap) ||
         (componentData.type === 'capacitor' && isInCapacitorGap)) {
+      console.log('Dropping component:', componentData);
       onComponentDrop(componentData, position);
+    } else {
+      console.log('Component dropped in wrong area or wrong type');
     }
-
-    setDraggedComponent(null);
   }, [onComponentDrop]);
 
-  // Enable drag and drop from external source
-  React.useEffect(() => {
-    const handleDragStart = (e: DragEvent) => {
-      const componentData = (e.target as HTMLElement)?.dataset?.component;
-      if (componentData) {
-        setDraggedComponent(JSON.parse(componentData));
-      }
-    };
-
-    document.addEventListener('dragstart', handleDragStart);
-    return () => document.removeEventListener('dragstart', handleDragStart);
-  }, []);
 
   const renderBulb = () => (
     <g className={circuitState.isComplete ? 'bulb-glow' : ''}>
@@ -298,12 +315,15 @@ export const CircuitCanvas: React.FC<CircuitCanvasProps> = ({
   );
 
   return (
-    <div className="w-full h-96 bg-component-body rounded-lg border-2 border-border">
+    <div className="w-full h-96 bg-component-body rounded-lg border-2 border-border relative">
+      <div className="absolute inset-0 bg-primary/5 opacity-0 transition-opacity duration-200 pointer-events-none" id="drop-overlay" />
       <svg
         ref={canvasRef}
         width="100%"
         height="100%"
         viewBox="0 0 600 350"
+        onDragEnter={handleDragEnter}
+        onDragLeave={handleDragLeave}
         onDragOver={handleDragOver}
         onDrop={handleDrop}
         className="w-full h-full"

@@ -22,7 +22,9 @@ export const ComponentToolbox: React.FC<ComponentToolboxProps> = ({
       draggable
       data-component={JSON.stringify(component)}
       onDragStart={(e) => {
-        e.dataTransfer.setData('text/plain', JSON.stringify(component));
+        console.log('Drag started for component:', component);
+        e.dataTransfer.setData('application/json', JSON.stringify(component));
+        e.dataTransfer.effectAllowed = 'copy';
         onComponentSelect(component);
       }}
     >
