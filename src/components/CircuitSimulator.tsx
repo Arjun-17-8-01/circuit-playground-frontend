@@ -63,7 +63,11 @@ const levels: Level[] = [
   { id: 15, correctResistor: 10, correctCapacitor: 10, title: "Master Circuit", description: "Connect 10Ω resistor and 10μF capacitor" },
 ];
 
-export const CircuitSimulator: React.FC = () => {
+interface CircuitSimulatorProps {
+  onLevelComplete?: (level: number, timeSpent: number, attempts: number) => void;
+}
+
+export const CircuitSimulator: React.FC<CircuitSimulatorProps> = ({ onLevelComplete }) => {
   const { toast } = useToast();
   const [circuitState, setCircuitState] = useState<CircuitState>({
     isComplete: false,
@@ -75,6 +79,12 @@ export const CircuitSimulator: React.FC = () => {
     voltage: 12, // 12V battery
     currentLevel: 1,
     isCorrectCombination: false,
+  });
+
+  const [gameStats, setGameStats] = useState({
+    startTime: Date.now(),
+    attempts: 0,
+    levelStartTime: Date.now()
   });
 
   const checkCorrectCombination = useCallback((components: Component[], currentLevel: number) => {
@@ -131,22 +141,32 @@ export const CircuitSimulator: React.FC = () => {
     
     const hasResistor = updatedComponents.some(c => c.type === 'resistor' && c.isConnected);
     const hasCapacitor = updatedComponents.some(c => c.type === 'capacitor' && c.isConnected);
+    const isLevelComplete = hasResistor && hasCapacitor && isCorrectCombination;
     
     setCircuitState(prev => ({
       ...prev,
       components: updatedComponents,
-      isComplete: hasResistor && hasCapacitor && isCorrectCombination,
+      isComplete: isLevelComplete,
       isCorrectCombination,
       totalResistance,
       totalCapacitance,
       current,
     }));
 
+    // Track attempts for scoring
+    setGameStats(prev => ({ ...prev, attempts: prev.attempts + 1 }));
+
+    // Handle level completion
+    if (isLevelComplete && onLevelComplete) {
+      const timeSpent = Math.floor((Date.now() - gameStats.levelStartTime) / 1000);
+      onLevelComplete(circuitState.currentLevel, timeSpent, gameStats.attempts + 1);
+    }
+
     toast({
       title: "Component Connected",
       description: `${componentTemplate.value}${componentTemplate.unit} ${componentTemplate.type} added to circuit`,
     });
-  }, [circuitState, calculateCircuitValues, toast]);
+  }, [circuitState, calculateCircuitValues, gameStats, onLevelComplete, toast]);
 
   const handleComponentRemove = useCallback((componentId: string) => {
     const updatedComponents = circuitState.components.filter(c => c.id !== componentId);
@@ -217,6 +237,13 @@ export const CircuitSimulator: React.FC = () => {
       current: 0,
     }));
     
+    // Reset game stats for new level
+    setGameStats({
+      startTime: Date.now(),
+      attempts: 0,
+      levelStartTime: Date.now()
+    });
+    
     toast({
       title: `Level ${newLevel}`,
       description: levels.find(l => l.id === newLevel)?.description || "",
@@ -232,7 +259,7 @@ export const CircuitSimulator: React.FC = () => {
   const currentLevelData = levels.find(l => l.id === circuitState.currentLevel);
 
   return (
-    <div className="min-h-screen bg-background p-4">
+    <div className="min-h-screen bg-white p-4">
       <div className="max-w-7xl mx-auto">
         <header className="mb-6">
           <div className="flex justify-between items-start mb-4">
@@ -247,19 +274,22 @@ export const CircuitSimulator: React.FC = () => {
               <div className="text-lg font-bold text-primary">{circuitState.currentLevel}/{levels.length}</div>
             </div>
           </div>
-          <div className="bg-card border border-border rounded-lg p-4 mb-4">
-            <h3 className="font-semibold text-primary mb-2">Objective:</h3>
-            <p className="text-muted-foreground">{currentLevelData?.description}</p>
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+            <h3 className="font-semibold text-blue-700 mb-2">Objective:</h3>
+            <p className="text-gray-600">{currentLevelData?.description}</p>
             {!circuitState.isCorrectCombination && circuitState.components.length > 0 && (
-              <p className="text-destructive mt-2 text-sm">⚠️ Wrong combination! Try different components.</p>
+              <p className="text-red-600 mt-2 text-sm">⚠️ Wrong combination! Try different components.</p>
             )}
             {circuitState.isComplete && (
-              <div className="mt-3">
-                <p className="text-green-400 font-semibold mb-2">✅ Level Complete!</p>
+              <div className="mt-3 p-3 bg-green-100 border border-green-300 rounded-md">
+                <p className="text-green-700 font-semibold mb-2">✅ Level Complete!</p>
+                <p className="text-green-600 text-sm mb-2">
+                  Time: {Math.floor((Date.now() - gameStats.levelStartTime) / 1000)}s | Attempts: {gameStats.attempts}
+                </p>
                 {circuitState.currentLevel < levels.length && (
                   <button
                     onClick={handleNextLevel}
-                    className="bg-primary text-primary-foreground px-4 py-2 rounded-md text-sm font-medium hover:bg-primary/90 transition-colors"
+                    className="bg-green-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-green-700 transition-colors"
                   >
                     Next Level →
                   </button>
@@ -282,7 +312,7 @@ export const CircuitSimulator: React.FC = () => {
 
           {/* Main Circuit Canvas */}
           <div className="lg:col-span-2">
-            <Card className="p-4 bg-card border-border">
+            <Card className="p-4 bg-white border-gray-200 shadow-md">
               <CircuitCanvas
                 circuitState={circuitState}
                 onComponentDrop={handleComponentDrop}
