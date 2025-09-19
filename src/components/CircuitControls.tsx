@@ -3,22 +3,77 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { RotateCcw, Zap, ZapOff } from 'lucide-react';
-import { CircuitState } from './CircuitSimulator';
+import { RotateCcw, Zap, ZapOff, ChevronLeft, ChevronRight } from 'lucide-react';
+import { CircuitState, Level } from './CircuitSimulator';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 interface CircuitControlsProps {
   circuitState: CircuitState;
+  levels: Level[];
   onConnectionTypeChange: (type: 'series' | 'parallel') => void;
   onReset: () => void;
+  onLevelChange: (level: number) => void;
 }
 
 export const CircuitControls: React.FC<CircuitControlsProps> = ({
   circuitState,
+  levels,
   onConnectionTypeChange,
   onReset,
+  onLevelChange,
 }) => {
   return (
     <div className="space-y-4">
+      {/* Level Selector */}
+      <Card className="bg-card border-border">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-lg">Level Selection</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => onLevelChange(Math.max(1, circuitState.currentLevel - 1))}
+              disabled={circuitState.currentLevel <= 1}
+              className="px-2"
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </Button>
+            
+            <Select
+              value={circuitState.currentLevel.toString()}
+              onValueChange={(value) => onLevelChange(parseInt(value))}
+            >
+              <SelectTrigger className="flex-1">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {levels.map((level) => (
+                  <SelectItem key={level.id} value={level.id.toString()}>
+                    Level {level.id}: {level.title}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => onLevelChange(Math.min(levels.length, circuitState.currentLevel + 1))}
+              disabled={circuitState.currentLevel >= levels.length}
+              className="px-2"
+            >
+              <ChevronRight className="w-4 h-4" />
+            </Button>
+          </div>
+          
+          <div className="text-xs text-muted-foreground">
+            Current: {levels.find(l => l.id === circuitState.currentLevel)?.description}
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Circuit Status */}
       <Card className="bg-card border-border">
         <CardHeader className="pb-3">
